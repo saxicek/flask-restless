@@ -350,6 +350,12 @@ class APIManager(object):
                                                     converter)
             blueprint.add_url_rule(instance_endpoint, methods=instance_methods,
                                    view_func=api_view)
+        # endpoints for instance related collections
+        for converter in ('int', 'string'):
+            instance_endpoint = '%s/<%s:instid>/<string:relation>/' % (collection_endpoint,
+                                                                       converter)
+            blueprint.add_url_rule(instance_endpoint, methods=['GET'],
+                                   view_func=api_view)
         # if function evaluation is allowed, add an endpoint at /api/eval/...
         # which responds only to GET requests and responds with the result of
         # evaluating functions on all instances of the specified model
