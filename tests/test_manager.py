@@ -282,6 +282,36 @@ class APIManagerTest(TestSupport):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(loads(response.data)['id'], 1)
 
+    def test_create_api_for_model_collections(self):
+        """Test for read access to model foreign keys
+
+        """
+        mary = self.Person(name=u'Mary', age=19, other=19)
+        pc = self.Computer(name=u'PC', vendor=u'Noname')
+        pc.owner.append(mary)
+        laptop = self.Computer(name=u'Lappy', vendor=u'Dell')
+        laptop.owner.append(mary)
+        self.session.add_all([mary, pc, laptop])
+        self.session.commit()
+
+        manager = APIManager(self.flaskapp, session=self.Session)
+        manager.create_api(self.Person, methods=['GET'])
+        manager.create_api(self.Computer, methods=['GET'])
+
+        # test that collection endpoints are present
+        response = self.app.get('/api/person/'+str(mary.id)+'/computers/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(loads(response.data)['objects']), 2)
+
+        # access is setup for child relations only, master cannot be accessed this way
+        response = self.app.get('/api/computer/'+str(pc.id)+'/owner/')
+        self.assertEqual(response.status_code, 404)
+        # also plain attributes cannot be accessed this way
+        response = self.app.get('/api/person/'+str(mary.id)+'/name/')
+        self.assertEqual(response.status_code, 404)
+        response = self.app.get('/api/computer/'+str(pc.id)+'/owner_id/')
+        self.assertEqual(response.status_code, 404)
+
 
 class FSATest(FlaskTestBase):
     """Tests which use models defined using Flask-SQLAlchemy instead of pure

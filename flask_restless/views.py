@@ -39,6 +39,7 @@ from sqlalchemy.orm import RelationshipProperty
 from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.orm.properties import RelationshipProperty as RelProperty
+from sqlalchemy.orm.properties import ONETOMANY
 from sqlalchemy.sql import func
 
 from .helpers import unicode_keys_to_strings
@@ -452,6 +453,24 @@ class API(ModelView):
                          and self.results_per_page > 0)
         self.post_method_decorator_function = post_method_decorator_function
 
+    def _get_child_relation(self, instid, relation):
+        instance = self._get_by(instid)
+        if instance is None:
+            abort(404)
+        # exclude foreign keys of the related object for the recursive call
+        relationproperty = object_mapper(instance).get_property(relation)
+        # we support one-to-many relation only
+        if not isinstance(relationproperty, RelationshipProperty) \
+           or not relationproperty.direction == ONETOMANY:
+            abort(404)
+        newexclude = (key.name for key in relationproperty.remote_side)
+        # get the related value so we can see if it is None or a list
+        relatedvalue = getattr(instance, relation)
+        if relatedvalue is None:
+            abort(404)
+        result = [_to_dict(inst, exclude=newexclude) for inst in relatedvalue]
+        return jsonify(objects=result)
+
     def _add_to_relation(self, query, relationname, toadd=None):
         """Adds a new or existing related model to each model specified by
         `query`.
@@ -796,7 +815,7 @@ class API(ModelView):
         """
         return self._query_by_primary_key(primary_key_value, model).first()
 
-    def get(self, instid):
+    def get(self, instid, relation=None):
         """Returns a JSON representation of an instance of model with the
         specified name.
 
@@ -811,6 +830,8 @@ class API(ModelView):
 
         """
         self._check_authentication()
+        if instid and relation:
+            return self._get_child_relation(instid, relation)
         if instid is None:
             return self._search()
         inst = self._get_by(instid)
