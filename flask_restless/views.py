@@ -379,7 +379,8 @@ class API(ModelView):
     def __init__(self, session, model, authentication_required_for=None,
                  authentication_function=None, include_columns=None,
                  validation_exceptions=None, results_per_page=10,
-                 post_method_decorator_function=None, *args, **kw):
+                 post_method_decorator_function=None,
+                 get_result_postprocessor=None, *args, **kw):
         """Instantiates this view with the specified attributes.
 
         `session` is the SQLAlchemy session in which all database transactions
@@ -427,6 +428,9 @@ class API(ModelView):
         is not read from the post parameters (where malicious user can tamper
         with them) but from the session.
 
+        `get_result_postprocessor` is a callback function which takes
+        GET output and enhances it with other key/value pairs.
+
         .. versionadded:: 0.6
            Added the `results_per_page` keyword argument.
 
@@ -451,6 +455,7 @@ class API(ModelView):
         self.paginate = (isinstance(self.results_per_page, int)
                          and self.results_per_page > 0)
         self.post_method_decorator_function = post_method_decorator_function
+        self.get_result_postprocessor = get_result_postprocessor
 
     def _add_to_relation(self, query, relationname, toadd=None):
         """Adds a new or existing related model to each model specified by
@@ -819,6 +824,8 @@ class API(ModelView):
         relations = _get_relations(self.model)
         deep = dict((r, {}) for r in relations)
         result = _to_dict_include(inst, deep, include=self.include_columns)
+        if self.get_result_postprocessor:
+            result = self.get_result_postprocessor(result)
         return jsonify(result)
 
     def delete(self, instid):

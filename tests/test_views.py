@@ -851,6 +851,25 @@ class APITestCase(TestSupport):
         person = self.session.query(self.Person).filter_by(id=loads(response.data)['id']).first()
         self.assertEquals(person.other, 7)
 
+    def test_get_result_postprocessor(self):
+        """Tests GET method posprocessor.
+
+        """
+        def postprocess(result):
+            result['postprocessed'] = True
+            return result
+
+        self.manager.create_api(self.Person,
+                                url_prefix='/api/v4',
+                                methods=['GET', 'POST'],
+                                get_result_postprocessor=postprocess)
+        response = self.app.post('/api/v4/person', data=dumps({'name': u'Lincoln', 'age': 24}))
+        self.assertEqual(response.status_code, 201)
+        response = self.app.get('/api/v4/person/1')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(loads(response.data), {u'name': u'Lincoln', u'age': 24.0, u'postprocessed': True,
+                                                u'birth_date': None, u'computers': [], u'id': 1, u'other': None})
+
 
 def load_tests(loader, standard_tests, pattern):
     """Returns the test suite for this module."""
