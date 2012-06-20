@@ -195,7 +195,8 @@ class APIManager(object):
                              authentication_function=None,
                              include_columns=None, validation_exceptions=None,
                              results_per_page=10,
-                             post_form_preprocessor=None):
+                             post_form_preprocessor=None,
+                             get_result_postprocessor=None):
         """Creates an returns a ReSTful API interface as a blueprint, but does
         not register it on any :class:`flask.Flask` application.
 
@@ -291,6 +292,9 @@ class APIManager(object):
         is not read from the post parameters (where malicious user can tamper
         with them) but from the session.
 
+        `get_result_postprocessor` is a callback function which takes
+        GET output and enhances it with other key/value pairs.
+
         .. versionadded:: 0.6
            This functionality was formerly in :meth:`create_api`, but the
            blueprint creation and registration have now been separated.
@@ -337,7 +341,8 @@ class APIManager(object):
                                authentication_required_for,
                                authentication_function, include_columns,
                                validation_exceptions, results_per_page,
-                               post_form_preprocessor)
+                               post_form_preprocessor,
+                               get_result_postprocessor)
         # suffix an integer to apiname according to already existing blueprints
         blueprintname = self._next_blueprint_name(apiname)
         # add the URL rules to the blueprint: the first is for methods on the
