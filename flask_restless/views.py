@@ -853,7 +853,7 @@ class API(ModelView):
         deep = dict((r, {}) for r in relations)
         result = _to_dict_include(inst, deep, include=self.include_columns)
         if self.get_result_postprocessor:
-            result = self.get_result_postprocessor(result)
+            self.get_result_postprocessor(result)
         return jsonify(result)
 
     def delete(self, instid):
@@ -901,7 +901,7 @@ class API(ModelView):
 
         # If post_form_preprocessor is specified, call it
         if self.post_form_preprocessor:
-            params = self.post_form_preprocessor(params)
+            self.post_form_preprocessor(params)
 
         # Getting the list of relations that will be added later
         cols = _get_columns(self.model)
