@@ -381,6 +381,7 @@ class API(ModelView):
                  authentication_function=None, include_columns=None,
                  validation_exceptions=None, results_per_page=10,
                  post_form_preprocessor=None,
+                 post_form_postprocessor=None,
                  get_result_postprocessor=None, *args, **kw):
         """Instantiates this view with the specified attributes.
 
@@ -429,6 +430,11 @@ class API(ModelView):
         is not read from the post parameters (where malicious user can tamper
         with them) but from the session.
 
+        `post_form_postprocessor` is a callback function which takes
+        POST method result on input and further works on it. The example use
+        of this function is when you need to generate new CSRF token once
+        the call was successfully completed.
+
         `get_result_postprocessor` is a callback function which takes
         GET output and enhances it with other key/value pairs.
 
@@ -456,6 +462,7 @@ class API(ModelView):
         self.paginate = (isinstance(self.results_per_page, int)
                          and self.results_per_page > 0)
         self.post_form_preprocessor = post_form_preprocessor
+        self.post_form_postprocessor = post_form_postprocessor
         self.get_result_postprocessor = get_result_postprocessor
 
     def _get_child_relation(self, instid, relation):
@@ -929,7 +936,10 @@ class API(ModelView):
 
             pk_name = str(_primary_key_name(instance))
             pk_value = getattr(instance, pk_name)
-            return jsonify_status_code(201, **{pk_name: pk_value})
+            result = {pk_name: pk_value}
+            if self.post_form_postprocessor:
+                self.post_form_postprocessor(result)
+            return jsonify_status_code(201, **result)
         except self.validation_exceptions, exception:
             return self._handle_validation_exception(exception)
 

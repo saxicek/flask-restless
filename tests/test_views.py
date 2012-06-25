@@ -870,6 +870,23 @@ class APITestCase(TestSupport):
         self.assertEqual(loads(response.data), {u'name': u'Lincoln', u'age': 24.0, u'postprocessed': True,
                                                 u'birth_date': None, u'computers': [], u'id': 1, u'other': None})
 
+    def test_post_form_postprocessor(self):
+        """Tests POST method postprocessor using a custom function."""
+        def postprocess(params):
+            if params:
+                # just add a new attribute
+                params['other'] = 7
+
+        # test for function that decorates parameters with 'other' attribute
+        self.manager.create_api(self.Person, methods=['POST'],
+                                url_prefix='/api/v3',
+                                post_form_postprocessor=postprocess)
+
+        response = self.app.post('/api/v3/person',
+                                 data=dumps({'name': u'Lincoln', 'age': 23}))
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(loads(response.data)['other'], 7)
+
 
 def load_tests(loader, standard_tests, pattern):
     """Returns the test suite for this module."""
