@@ -382,6 +382,7 @@ class API(ModelView):
                  validation_exceptions=None, results_per_page=10,
                  post_form_preprocessor=None,
                  post_form_postprocessor=None,
+                 patch_form_preprocessor=None,
                  get_result_postprocessor=None, *args, **kw):
         """Instantiates this view with the specified attributes.
 
@@ -435,6 +436,13 @@ class API(ModelView):
         of this function is when you need to generate new CSRF token once
         the call was successfully completed.
 
+        `patch_form_preprocessor` is a callback function which takes
+        PUT or PATCH 2 input parameters - instance ID and data loaded from JSON
+        and enhances them with other key/value pairs. The example use of this
+        is when your ``model`` requires to store user identity and for security
+        reasons the identity is not read from the post parameters (where
+        malicious user can tamper with them) but from the session.
+
         `get_result_postprocessor` is a callback function which takes
         GET output and enhances it with other key/value pairs.
 
@@ -463,6 +471,7 @@ class API(ModelView):
                          and self.results_per_page > 0)
         self.post_form_preprocessor = post_form_preprocessor
         self.post_form_postprocessor = post_form_postprocessor
+        self.patch_form_preprocessor = patch_form_preprocessor
         self.get_result_postprocessor = get_result_postprocessor
 
     def _get_child_relation(self, instid, relation):
@@ -967,6 +976,10 @@ class API(ModelView):
         except (TypeError, ValueError, OverflowError):
             # this also happens when request.data is empty
             return jsonify_status_code(400, message='Unable to decode data')
+
+        # If patch_form_preprocessor is specified, call it
+        if self.patch_form_preprocessor:
+            self.patch_form_preprocessor(instid, data)
 
         patchmany = instid is None
         if patchmany:
