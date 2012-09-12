@@ -193,7 +193,9 @@ class APIManager(object):
                              allow_patch_many=False, allow_functions=False,
                              authentication_required_for=None,
                              authentication_function=None,
-                             include_columns=None, validation_exceptions=None,
+                             include_columns=None,
+                             patch_columns=None,
+                             validation_exceptions=None,
                              results_per_page=10,
                              post_form_preprocessor=None,
                              post_form_postprocessor=None,
@@ -282,6 +284,12 @@ class APIManager(object):
         columns will be included. If this list includes a string which does not
         name a column in `model`, it will be ignored.
 
+        `patch_columns` is a list of strings which name the columns of
+        `model` which will be used for :http:method:`patch`  and
+        :http:method:`put` requests. If request includes other columns,
+        they will be ignored. If this list includes a string which does not
+        name a column in `model`, it will be ignored.
+
         `results_per_page` is a positive integer which represents the number of
         results which are returned per page. If this is anything except a
         positive integer, pagination will be disabled (warning: this may result
@@ -354,6 +362,7 @@ class APIManager(object):
         api_view = API.as_view(apiname, self.session, model,
                                authentication_required_for,
                                authentication_function, include_columns,
+                               patch_columns,
                                validation_exceptions, results_per_page,
                                post_form_preprocessor,
                                post_form_postprocessor,

@@ -428,6 +428,45 @@ class APITestCase(TestSupport):
             self.assertEqual(i['birth_date'], ('%s-%s-%s' % (
                     year, str(month).zfill(2), str(day).zfill(2))))
 
+    def test_patch_filtered(self):
+        """Test for updating a single instance of the model using the
+        :http:method:`patch` method. Parameter `patch_columns` sets the
+        columns available for update.
+
+        """
+        # recreate the api to allow filtered patch at /api/v2/person
+        self.manager.create_api(self.Person, methods=['GET', 'POST', 'PATCH'],
+                                patch_columns=['name'], url_prefix='/api/v2')
+
+        resp = self.app.post('/api/v2/person', data=dumps({'name': u'Lincoln',
+                                                         'age': 10}))
+        self.assertEqual(resp.status_code, 201)
+        self.assertIn('id', loads(resp.data))
+
+        # Trying to pass invalid data to the update method
+        resp = self.app.patch('/api/v2/person/1', data='Invalid JSON string')
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(loads(resp.data)['message'], 'Unable to decode data')
+
+        # When passing supported and unsupported columns we should succeed but
+        # update only attributes from patch_column list.
+        resp = self.app.patch('/api/v2/person/1', data=dumps({'age': 24, 'name': 'Washington'}))
+        self.assertEqual(resp.status_code, 200)
+
+        resp = self.app.get('/api/v2/person/1')
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(loads(resp.data)['name'], 'Washington')
+        self.assertEqual(loads(resp.data)['age'], 10)
+
+        # When passing unsupported column only we should succeed but
+        # not update anything
+        resp = self.app.patch('/api/v2/person/1', data=dumps({'age': 24}))
+        self.assertEqual(resp.status_code, 200)
+
+        resp = self.app.get('/api/v2/person/1')
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(loads(resp.data)['age'], 10)
+
     def test_single_update(self):
         """Test for updating a single instance of the model using the
         :http:method:`patch` method.

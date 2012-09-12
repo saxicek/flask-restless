@@ -379,6 +379,7 @@ class API(ModelView):
 
     def __init__(self, session, model, authentication_required_for=None,
                  authentication_function=None, include_columns=None,
+                 patch_columns=None,
                  validation_exceptions=None, results_per_page=10,
                  post_form_preprocessor=None,
                  post_form_postprocessor=None,
@@ -417,6 +418,12 @@ class API(ModelView):
         `model` which will be included in the JSON representation of that model
         provided in response to :http:method:`get` requests. Only the named
         columns will be included. If this list includes a string which does not
+        name a column in `model`, it will be ignored.
+
+        `patch_columns` is a list of strings which name the columns of
+        `model` which will be used for :http:method:`patch`  and
+        :http:method:`put` requests. If request includes other columns,
+        they will be ignored. If this list includes a string which does not
         name a column in `model`, it will be ignored.
 
         `results_per_page` is a positive integer which represents the number of
@@ -465,6 +472,7 @@ class API(ModelView):
         self.authentication_required_for = \
             frozenset([m.upper() for m in self.authentication_required_for])
         self.include_columns = include_columns
+        self.patch_columns = patch_columns
         self.validation_exceptions = tuple(validation_exceptions or ())
         self.results_per_page = results_per_page
         self.paginate = (isinstance(self.results_per_page, int)
@@ -980,6 +988,10 @@ class API(ModelView):
         # If patch_form_preprocessor is specified, call it
         if self.patch_form_preprocessor:
             self.patch_form_preprocessor(instid, data)
+
+        # Remove data attributes which are not allowed to be set
+        if self.patch_columns:
+            data = dict((k, v) for k, v in data.iteritems() if k in self.patch_columns)
 
         patchmany = instid is None
         if patchmany:
