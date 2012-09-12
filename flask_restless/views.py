@@ -985,13 +985,13 @@ class API(ModelView):
             # this also happens when request.data is empty
             return jsonify_status_code(400, message='Unable to decode data')
 
-        # If patch_form_preprocessor is specified, call it
-        if self.patch_form_preprocessor:
-            self.patch_form_preprocessor(instid, data)
-
         # Remove data attributes which are not allowed to be set
         if self.patch_columns:
             data = dict((k, v) for k, v in data.iteritems() if k in self.patch_columns)
+
+        # If patch_form_preprocessor is specified, call it
+        if self.patch_form_preprocessor:
+            self.patch_form_preprocessor(instid, data)
 
         patchmany = instid is None
         if patchmany:
