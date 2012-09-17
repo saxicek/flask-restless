@@ -384,6 +384,7 @@ class API(ModelView):
                  post_form_preprocessor=None,
                  post_form_postprocessor=None,
                  patch_form_preprocessor=None,
+                 patch_form_postprocessor=None,
                  get_result_postprocessor=None, *args, **kw):
         """Instantiates this view with the specified attributes.
 
@@ -450,7 +451,12 @@ class API(ModelView):
         reasons the identity is not read from the post parameters (where
         malicious user can tamper with them) but from the session.
 
-        `get_result_postprocessor` is a callback function which takes
+        `patch_form_postprocessor` is a callback function which takes
+        PUT or PATCH method result on input and further works on it. The example use
+        of this function is when you need to generate new CSRF token once
+        the call was successfully completed.
+
+       `get_result_postprocessor` is a callback function which takes
         GET output and enhances it with other key/value pairs.
 
         .. versionadded:: 0.6
@@ -480,6 +486,7 @@ class API(ModelView):
         self.post_form_preprocessor = post_form_preprocessor
         self.post_form_postprocessor = post_form_postprocessor
         self.patch_form_preprocessor = patch_form_preprocessor
+        self.patch_form_postprocessor = patch_form_postprocessor
         self.get_result_postprocessor = get_result_postprocessor
 
     def _get_child_relation(self, instid, relation):
@@ -1026,7 +1033,13 @@ class API(ModelView):
         if patchmany:
             return jsonify(num_modified=num_modified)
         else:
-            return self.get(instid)
+            result = self.get(instid)
+            if result.data and self.patch_form_postprocessor:
+                # nasty solution but cleaner solution would require heavy refactoring of the code
+                data = json.loads(result.data)
+                self.patch_form_postprocessor(data)
+                result.data = json.dumps(data)
+            return result
 
     def put(self, instid):
         """Alias for :meth:`patch`."""

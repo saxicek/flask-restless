@@ -200,6 +200,7 @@ class APIManager(object):
                              post_form_preprocessor=None,
                              post_form_postprocessor=None,
                              patch_form_preprocessor=None,
+                             patch_form_postprocessor=None,
                              get_result_postprocessor=None):
         """Creates an returns a ReSTful API interface as a blueprint, but does
         not register it on any :class:`flask.Flask` application.
@@ -314,6 +315,12 @@ class APIManager(object):
         reasons the identity is not read from the post parameters (where
         malicious user can tamper with them) but from the session.
 
+        `patch_form_postprocessor` is a callback function which takes
+        PUT or PATCH method result on input and further works on it. The example use
+        of this function is when you need to generate new CSRF token once
+        the call was successfully completed. Is used only in case when single
+        instance is being updated.
+
         `get_result_postprocessor` is a callback function which takes
         GET output and enhances it with other key/value pairs.
 
@@ -367,6 +374,7 @@ class APIManager(object):
                                post_form_preprocessor,
                                post_form_postprocessor,
                                patch_form_preprocessor,
+                               patch_form_postprocessor,
                                get_result_postprocessor)
         # suffix an integer to apiname according to already existing blueprints
         blueprintname = self._next_blueprint_name(apiname)
