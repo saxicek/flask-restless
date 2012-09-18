@@ -385,6 +385,8 @@ class API(ModelView):
                  post_form_postprocessor=None,
                  patch_form_preprocessor=None,
                  patch_form_postprocessor=None,
+                 delete_form_preprocessor=None,
+                 delete_form_postprocessor=None,
                  get_result_postprocessor=None, *args, **kw):
         """Instantiates this view with the specified attributes.
 
@@ -456,6 +458,17 @@ class API(ModelView):
         of this function is when you need to generate new CSRF token once
         the call was successfully completed.
 
+        `delete_form_preprocessor` is a callback function which takes
+        SQLAlchemy model instance as input parameter (if found) and performs an
+        action on it. The example use of this is when you need to check access
+        rights for the DELETE action. The function is executed only if instance
+        to be deleted exists in the system.
+
+        `delete_form_postprocessor` is a callback function which instance ID
+        as an input parameter and further works on it. The example use
+        of this function is when you need to generate new CSRF token once
+        the call was successfully completed.
+
        `get_result_postprocessor` is a callback function which takes
         GET output and enhances it with other key/value pairs.
 
@@ -487,6 +500,8 @@ class API(ModelView):
         self.post_form_postprocessor = post_form_postprocessor
         self.patch_form_preprocessor = patch_form_preprocessor
         self.patch_form_postprocessor = patch_form_postprocessor
+        self.delete_form_preprocessor = delete_form_preprocessor
+        self.delete_form_postprocessor = delete_form_postprocessor
         self.get_result_postprocessor = get_result_postprocessor
 
     def _get_child_relation(self, instid, relation):
@@ -892,9 +907,19 @@ class API(ModelView):
         self._check_authentication()
         inst = self._get_by(instid)
         if inst is not None:
+            if self.delete_form_preprocessor:
+                self.delete_form_preprocessor(inst)
             self.session.delete(inst)
             self.session.commit()
-        return jsonify_status_code(204)
+
+        result = None
+        if self.delete_form_postprocessor:
+            result = self.delete_form_postprocessor(instid)
+
+        if result:
+            return jsonify_status_code(200, result)
+        else:
+            return jsonify_status_code(204)
 
     def post(self):
         """Creates a new instance of a given model based on request data.

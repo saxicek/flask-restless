@@ -15,7 +15,7 @@ from datetime import date
 from datetime import datetime
 from unittest2 import TestSuite
 
-from flask import json
+from flask import json, abort
 from sqlalchemy.exc import OperationalError
 
 from flask.ext.restless.views import _evaluate_functions as evaluate_functions
@@ -963,6 +963,36 @@ class APITestCase(TestSupport):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(loads(response.data), {u'name': u'Washington', u'age': 24.0,
                                                 u'birth_date': None, u'computers': [], u'id': 1, u'other': 7})
+
+    def test_delete_form_preprocessor(self):
+        """Tests DELETE method decoration using a custom function."""
+        def decorator_function(inst):
+            abort(403)
+
+        # test for function that decorates parameters with 'other' attribute
+        self.manager.create_api(self.Person, methods=['POST', 'DELETE'],
+                                url_prefix='/api/v5',
+                                delete_form_preprocessor=decorator_function)
+        response = self.app.post('/api/v5/person', data=dumps({'name': u'Lincoln', 'age': 24}))
+        self.assertEqual(response.status_code, 201)
+        response = self.app.delete('/api/v5/person/1')
+        self.assertEqual(response.status_code, 403)
+
+    def test_delete_form_postprocessor(self):
+        """Tests DELETE method postprocessor using a custom function."""
+        def postprocess(instid):
+            return {'_csrf_token': 'CSRF_TOKEN'}
+
+        # test for function that decorates parameters with 'other' attribute
+        self.manager.create_api(self.Person, methods=['POST', 'DELETE'],
+                                url_prefix='/api/v6',
+                                delete_form_postprocessor=postprocess)
+
+        response = self.app.post('/api/v6/person', data=dumps({'name': u'Lincoln', 'age': 24}))
+        self.assertEqual(response.status_code, 201)
+        response = self.app.delete('/api/v6/person/1')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(loads(response.data), {u'_csrf_token': u'CSRF_TOKEN'})
 
 
 def load_tests(loader, standard_tests, pattern):
