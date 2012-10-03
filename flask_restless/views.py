@@ -109,7 +109,7 @@ def _get_columns(model):
     specified `model` class.
 
     """
-    return model._sa_class_manager
+    return {x.key: x for x in class_mapper(model).iterate_properties}
 
 
 def _get_related_model(model, relationname):
@@ -117,13 +117,19 @@ def _get_related_model(model, relationname):
     whose name is `relationname`.
 
     """
-    return _get_columns(model)[relationname].property.mapper.class_
+    return _get_columns(model)[relationname].mapper.class_
 
 
 def _get_relations(model):
     """Returns a list of relation names of `model` (as a list of strings)."""
     cols = _get_columns(model)
-    return [k for k in cols if isinstance(cols[k].property, RelProperty)]
+    return [k for k in cols if isinstance(cols[k], RelProperty)]
+
+
+def _get_onetomany_relations(model):
+    """Returns a list of one-to-many relation names of `model` (as a list of strings)."""
+    cols = _get_columns(model)
+    return [k for k in cols if isinstance(cols[k], RelProperty) and cols[k].direction == ONETOMANY]
 
 
 def _primary_key_name(model_or_instance):
@@ -288,6 +294,18 @@ def _evaluate_functions(session, model, functions):
         exception.function = bad_function
         raise exception
     return dict(zip(funcnames, evaluated))
+
+
+def _related_collection(f, relation):
+    """Adds `relation` parameter to the function `f`.
+
+    This helper function is used for propagation of parameter `relation`
+    to the `get` view function to get related objects of specified entity.
+
+    """
+    def decorator(*args, **kwargs):
+        return f(relation=relation, *args, **kwargs)
+    return decorator
 
 
 class ModelView(MethodView):
@@ -508,7 +526,7 @@ class API(ModelView):
         instance = self._get_by(instid)
         if instance is None:
             abort(404)
-        # exclude foreign keys of the related object for the recursive call
+        # get related object
         relationproperty = object_mapper(instance).get_property(relation)
         # we support one-to-many relation only
         if not isinstance(relationproperty, RelationshipProperty) \
@@ -975,7 +993,7 @@ class API(ModelView):
 
             # Handling relations, a single level is allowed
             for col in set(relations).intersection(paramkeys):
-                submodel = cols[col].property.mapper.class_
+                submodel = cols[col].mapper.class_
                 for subparams in params[col]:
                     kw = unicode_keys_to_strings(subparams)
                     subinst = _get_or_create(self.session, submodel, **kw)[0]

@@ -17,6 +17,8 @@ from sqlalchemy.orm import scoped_session
 
 from .views import API
 from .views import FunctionAPI
+from .views import _get_onetomany_relations
+from .views import _related_collection
 
 #: The set of methods which are allowed by default when creating an API
 READONLY_METHODS = frozenset(('GET', ))
@@ -412,12 +414,14 @@ class APIManager(object):
                                                     converter)
             blueprint.add_url_rule(instance_endpoint, methods=instance_methods,
                                    view_func=api_view)
-        # endpoints for instance related collections
-        for converter in ('int', 'string'):
-            instance_endpoint = '%s/<%s:instid>/<string:relation>/' % (collection_endpoint,
-                                                                       converter)
-            blueprint.add_url_rule(instance_endpoint, methods=['GET'],
-                                   view_func=api_view)
+        # endpoints for instance related collections - one-to-many relation only
+        for relname in _get_onetomany_relations(model):
+            view = _related_collection(api_view, relname)
+            for converter in ('int', 'string'):
+                instance_endpoint = '%s/<%s:instid>/%s/' % (collection_endpoint,
+                                                            converter, relname)
+                blueprint.add_url_rule(instance_endpoint, methods=['GET'],
+                                       view_func=view)
         # if function evaluation is allowed, add an endpoint at /api/eval/...
         # which responds only to GET requests and responds with the result of
         # evaluating functions on all instances of the specified model

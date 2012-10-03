@@ -302,6 +302,9 @@ class APIManagerTest(TestSupport):
         response = self.app.get('/api/person/'+str(mary.id)+'/computers/')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(loads(response.data)['objects']), 2)
+        # test that not existing collection endpoint returns HTTP 404
+        response = self.app.get('/api/person/'+str(mary.id)+'/parents/')
+        self.assertEqual(response.status_code, 404)
 
         # access is setup for child relations only, master cannot be accessed this way
         response = self.app.get('/api/computer/'+str(pc.id)+'/owner/')
