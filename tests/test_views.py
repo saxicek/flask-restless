@@ -913,10 +913,11 @@ class APITestCase(TestSupport):
         """Tests GET method preprocessor.
 
         """
-        def preprocess(instid, relation):
+        def preprocess(instid, relation, request):
+            search_data = {"filters": [{"name": "id", "val": 1, "op": "equals"},]}
             if instid:
                 instid = 1
-            return instid, relation
+            return instid, relation, search_data
 
         self.manager.create_api(self.Person,
                                 url_prefix='/api/v5',
@@ -935,6 +936,14 @@ class APITestCase(TestSupport):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(loads(response.data), {u'name': u'Lincoln', u'age': 24.0,
                                                 u'birth_date': None, u'computers': [], u'id': 1, u'other': None})
+        # request for all persons is limited by preprocessor using the search_data query
+        response = self.app.get('/api/v5/person')
+        self.assertEqual(response.status_code, 200)
+        data = loads(response.data)
+        self.assertIn('objects', data)
+        self.assertEqual(len(data['objects']), 1)
+        self.assertEqual(data['objects'][0], {u'name': u'Lincoln', u'age': 24.0,
+                                              u'birth_date': None, u'computers': [], u'id': 1, u'other': None})
 
     def test_post_form_postprocessor(self):
         """Tests POST method postprocessor using a custom function."""

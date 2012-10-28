@@ -728,7 +728,7 @@ class API(ModelView):
                 result[fieldname] = value
         return result
 
-    def _search(self):
+    def _search(self, search_data):
         """Defines a generic search function for the database model.
 
         If the query string is empty, or if the specified query is invalid for
@@ -793,12 +793,17 @@ class API(ModelView):
         For a complete description of all possible search parameters and
         responses, see :ref:`searchformat`.
 
+        `search_data` parameter is used to override user entered search
+        criteria in get_request_preprocessor.
         """
-        # try to get search query from the request query parameters
-        try:
-            data = json.loads(request.args.get('q', '{}'))
-        except (TypeError, ValueError, OverflowError):
-            return jsonify_status_code(400, message='Unable to decode data')
+        if search_data:
+            data = search_data
+        else:
+            # try to get search query from the request query parameters
+            try:
+                data = json.loads(request.args.get('q', '{}'))
+            except (TypeError, ValueError, OverflowError):
+                return jsonify_status_code(400, message='Unable to decode data')
 
         # perform a filtered search
         try:
@@ -904,12 +909,13 @@ class API(ModelView):
 
         """
         self._check_authentication()
+        search_data = None
         if self.get_request_preprocessor:
-            instid, relation = self.get_request_preprocessor(instid, relation)
+            instid, relation, search_data = self.get_request_preprocessor(instid, relation, request)
         if instid and relation:
             return self._get_child_relation(instid, relation)
         if instid is None:
-            return self._search()
+            return self._search(search_data)
         inst = self._get_by(instid)
         if inst is None:
             abort(404)
