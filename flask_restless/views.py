@@ -405,7 +405,8 @@ class API(ModelView):
                  patch_form_postprocessor=None,
                  delete_form_preprocessor=None,
                  delete_form_postprocessor=None,
-                 get_result_postprocessor=None, *args, **kw):
+                 get_result_postprocessor=None,
+                 get_request_preprocessor=None, *args, **kw):
         """Instantiates this view with the specified attributes.
 
         `session` is the SQLAlchemy session in which all database transactions
@@ -490,6 +491,9 @@ class API(ModelView):
        `get_result_postprocessor` is a callback function which takes
         GET output and enhances it with other key/value pairs.
 
+        `get_request_preprocessor` is a callback function which takes
+        GET input and enhances it as required.
+
         .. versionadded:: 0.6
            Added the `results_per_page` keyword argument.
 
@@ -521,6 +525,7 @@ class API(ModelView):
         self.delete_form_preprocessor = delete_form_preprocessor
         self.delete_form_postprocessor = delete_form_postprocessor
         self.get_result_postprocessor = get_result_postprocessor
+        self.get_request_preprocessor = get_request_preprocessor
 
     def _get_child_relation(self, instid, relation):
         instance = self._get_by(instid)
@@ -899,6 +904,8 @@ class API(ModelView):
 
         """
         self._check_authentication()
+        if self.get_request_preprocessor:
+            instid, relation = self.get_request_preprocessor(instid, relation)
         if instid and relation:
             return self._get_child_relation(instid, relation)
         if instid is None:

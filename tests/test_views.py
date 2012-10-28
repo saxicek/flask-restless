@@ -891,7 +891,7 @@ class APITestCase(TestSupport):
         self.assertEquals(person.other, 7)
 
     def test_get_result_postprocessor(self):
-        """Tests GET method posprocessor.
+        """Tests GET method postprocessor.
 
         """
         def postprocess(result):
@@ -907,6 +907,33 @@ class APITestCase(TestSupport):
         response = self.app.get('/api/v4/person/1')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(loads(response.data), {u'name': u'Lincoln', u'age': 24.0, u'postprocessed': True,
+                                                u'birth_date': None, u'computers': [], u'id': 1, u'other': None})
+
+    def test_get_request_preprocessor(self):
+        """Tests GET method preprocessor.
+
+        """
+        def preprocess(instid, relation):
+            if instid:
+                instid = 1
+            return instid, relation
+
+        self.manager.create_api(self.Person,
+                                url_prefix='/api/v5',
+                                methods=['GET', 'POST'],
+                                get_request_preprocessor=preprocess)
+        response = self.app.post('/api/v5/person', data=dumps({'name': u'Lincoln', 'age': 24}))
+        self.assertEqual(response.status_code, 201)
+        response = self.app.post('/api/v5/person', data=dumps({'name': u'Washington', 'age': 4}))
+        self.assertEqual(response.status_code, 201)
+        response = self.app.get('/api/v5/person/1')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(loads(response.data), {u'name': u'Lincoln', u'age': 24.0,
+                                                u'birth_date': None, u'computers': [], u'id': 1, u'other': None})
+        # request for person 2 is overridden by preprocessor
+        response = self.app.get('/api/v5/person/2')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(loads(response.data), {u'name': u'Lincoln', u'age': 24.0,
                                                 u'birth_date': None, u'computers': [], u'id': 1, u'other': None})
 
     def test_post_form_postprocessor(self):
