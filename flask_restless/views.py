@@ -109,7 +109,11 @@ def _get_columns(model):
     specified `model` class.
 
     """
-    return {x.key: x for x in class_mapper(model).iterate_properties}
+    columns = {}
+    for x in class_mapper(model).iterate_properties:
+        columns[x.key] = x
+    
+    return columns
 
 
 def _get_related_model(model, relationname):
