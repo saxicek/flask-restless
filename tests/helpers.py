@@ -52,17 +52,12 @@ def setUpModule():
     tests.
 
     """
-    DB['fd'], DB['filename'] = tempfile.mkstemp()
+    pass
 
 
 def tearDownModule():
     """Closes and unlinks the database file used in the tests."""
-    if DB['fd']:
-        os.close(DB['fd'])
-        DB['fd'] = None
-    if DB['filename']:
-        os.unlink(DB['filename'])
-        DB['filename'] = None
+    pass
 
 
 class FlaskTestBase(TestCase):
@@ -76,7 +71,7 @@ class FlaskTestBase(TestCase):
         app = Flask(__name__)
         app.config['DEBUG'] = True
         app.config['TESTING'] = True
-        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///%s' % DB['filename']
+        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite://'
         self.flaskapp = app
 
         # create the test client
