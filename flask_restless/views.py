@@ -864,6 +864,8 @@ class API(ModelView):
             end = len(instances)
         objects = [_to_dict_include(x, deep, include=self.include_columns)
                    for x in instances[start:end]]
+        if self.get_result_postprocessor:
+            self.get_result_postprocessor(objects)
         return jsonify(page=page_num, objects=objects)
 
     def _check_authentication(self):

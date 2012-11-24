@@ -898,16 +898,38 @@ class APITestCase(TestSupport):
             result['postprocessed'] = True
             return result
 
+        def list_postprocess(result):
+            for r in result:
+                postprocess(r)
+            return result
+
         self.manager.create_api(self.Person,
-                                url_prefix='/api/v4',
+                                url_prefix='/api/v1',
                                 methods=['GET', 'POST'],
                                 get_result_postprocessor=postprocess)
-        response = self.app.post('/api/v4/person', data=dumps({'name': u'Lincoln', 'age': 24}))
+        self.manager.create_api(self.Person,
+                                url_prefix='/api/v2',
+                                methods=['GET', 'POST'],
+                                get_result_postprocessor=list_postprocess)
+
+        # test postprocessing of instances
+        response = self.app.post('/api/v1/person', data=dumps({'name': u'Lincoln', 'age': 24}))
         self.assertEqual(response.status_code, 201)
-        response = self.app.get('/api/v4/person/1')
+        response = self.app.get('/api/v1/person/1')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(loads(response.data), {u'name': u'Lincoln', u'age': 24.0, u'postprocessed': True,
                                                 u'birth_date': None, u'computers': [], u'id': 1, u'other': None})
+
+        # test postprocessing of result list (i.e. without ID specified)
+        response = self.app.post('/api/v2/person', data=dumps({'name': u'Gottwald', 'age': 48}))
+        self.assertEqual(response.status_code, 201)
+        response = self.app.get('/api/v2/person')
+        self.assertEqual(response.status_code, 200)
+        data = loads(response.data)
+        self.assertIn('objects', data)
+        self.assertEqual(len(data['objects']), 2)
+        for item in data['objects']:
+            self.assertEqual(item['postprocessed'], True)
 
     def test_get_request_preprocessor(self):
         """Tests GET method preprocessor.
